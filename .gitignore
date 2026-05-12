@@ -1,0 +1,33 @@
+# Entorno virtual
+venv/
+.venv/
+
+# Variables sensibles
+.env
+backend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos subidos por usuarios
+uploads/
+backend/uploads/
+
+# Logs
+logs/
+backend/logs/
+
+# Archivos Excel de prueba o carga
+*.xlsx
+*.xls
+*.xlsm
+
+# Configuración local de VS Code
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
