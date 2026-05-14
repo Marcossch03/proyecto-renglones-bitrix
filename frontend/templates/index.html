@@ -191,7 +191,7 @@
 
     <p class="subtitle">
       Cargue la URL de una negociación de Bitrix y una planilla de cotización.
-      El sistema validará los renglones antes de crear la carpeta y los productos.
+      El sistema validará los renglones antes de crear la carpeta, cargar los productos y asociarlos a la negociación.
     </p>
 
     {% if error %}
@@ -233,12 +233,13 @@
     {% if carga_realizada %}
       <div class="status">
         <div class="success-title">
-          La carpeta y los renglones fueron cargados correctamente en Bitrix.
+          La carpeta, los renglones y la asociación con la negociación fueron procesados correctamente.
         </div>
         Carpeta: {{ nombre_carpeta }}<br>
         SECTION_ID: {{ section_id }}<br>
         Acción sobre carpeta: {{ accion_carpeta }}<br>
-        Productos/renglones creados: {{ productos_creados|length }}
+        Productos/renglones creados: {{ productos_creados|length }}<br>
+        Productos/renglones asociados a la negociación: {{ productos_asociados }}
       </div>
     {% endif %}
 
@@ -251,6 +252,8 @@
             <th>ID Bitrix</th>
             <th>Renglón</th>
             <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Precio</th>
           </tr>
         </thead>
 
@@ -260,6 +263,8 @@
               <td>{{ producto.id }}</td>
               <td>{{ producto.nombre }}</td>
               <td>{{ producto.descripcion }}</td>
+              <td>{{ producto.cantidad }}</td>
+              <td>{{ producto.precio }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -303,6 +308,7 @@
             <th>Fila Excel</th>
             <th>Renglón</th>
             <th>Descripción</th>
+            <th>Cantidad</th>
             <th>Unitario</th>
             <th>Total</th>
             <th>Dotación 4hs</th>
@@ -318,6 +324,7 @@
               <td>{{ item.fila_excel }}</td>
               <td>{{ item.nombre_producto }}</td>
               <td>{{ item.descripcion_producto }}</td>
+              <td>{{ item.cantidad }}</td>
               <td>{{ item.valor_unitario }}</td>
               <td>{{ item.valor_total }}</td>
               <td>{{ item.dotacion_4hs }}</td>
@@ -335,7 +342,7 @@
             <input type="hidden" name="url_negociacion" value="{{ url_negociacion }}">
             <input type="hidden" name="archivo_guardado" value="{{ archivo_guardado }}">
             <button type="submit" class="secondary" id="btn-cargar">
-              Crear carpeta y cargar renglones en Bitrix
+              Crear carpeta, cargar renglones y asociar a negociación
             </button>
           </form>
         </div>
