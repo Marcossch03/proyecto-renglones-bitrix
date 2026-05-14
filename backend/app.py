@@ -11,6 +11,7 @@ from bitrix_client import (
     obtener_deal_por_id,
     obtener_o_crear_seccion,
     crear_producto_en_seccion,
+    asociar_productos_a_negociacion,
     BitrixError,
 )
 
@@ -195,7 +196,16 @@ def cargar():
                 "id": resultado_producto.get("result"),
                 "nombre": renglon["nombre_producto"],
                 "descripcion": renglon["descripcion_producto"],
+                "cantidad": renglon["cantidad"],
+                "precio": renglon["valor_unitario"],
             })
+
+        resultado_asociacion = asociar_productos_a_negociacion(
+            deal_id,
+            productos_creados,
+        )
+
+        productos_asociados = len(productos_creados)
 
         return render_template(
             "index.html",
@@ -211,6 +221,8 @@ def cargar():
             accion_carpeta=resultado_seccion["accion"],
             section_id=section_id,
             productos_creados=productos_creados,
+            productos_asociados=productos_asociados,
+            resultado_asociacion=resultado_asociacion,
         )
 
     except BitrixError as error:
