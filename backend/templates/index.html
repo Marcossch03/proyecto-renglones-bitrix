@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Carga de Renglones Bitrix</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 40px;
+      color: #222;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      background: white;
+      border-radius: 14px;
+      padding: 30px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #1f3b73;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-bottom: 25px;
+      box-sizing: border-box;
+    }
+
+    input[type="file"] {
+      background: #f8fbff;
+    }
+
+    button {
+      background: #1f5fbf;
+      color: white;
+      border: none;
+      padding: 13px 22px;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    button.secondary {
+      background: #2f855a;
+      margin-top: 25px;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 25px;
+      font-size: 14px;
+    }
+
+    th {
+      background: #1f3b73;
+      color: white;
+      padding: 12px;
+      text-align: left;
+    }
+
+    td {
+      padding: 11px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    tr:nth-child(even) {
+      background: #f7f9fc;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 12px;
+      background: #e8f4ee;
+      border-left: 5px solid #2f855a;
+      border-radius: 6px;
+      color: #245c3d;
+    }
+
+    .error {
+      margin-top: 20px;
+      padding: 12px;
+      background: #ffe2e2;
+      border-left: 5px solid #c53030;
+      border-radius: 6px;
+      color: #742a2a;
+    }
+
+    .warning {
+      margin-top: 20px;
+      padding: 12px;
+      background: #fff7d6;
+      border-left: 5px solid #d69e2e;
+      border-radius: 6px;
+      color: #744210;
+    }
+
+    .info-box {
+      margin-top: 20px;
+      padding: 14px;
+      background: #eef4ff;
+      border-left: 5px solid #1f5fbf;
+      border-radius: 6px;
+      color: #1f3b73;
+    }
+
+    .actions {
+      margin-top: 25px;
+    }
+
+    .success-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.86);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: #1f3b73;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 52px;
+      height: 52px;
+      border: 5px solid #d8e2f3;
+      border-top: 5px solid #1f5fbf;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    .loading-overlay small {
+      margin-top: 8px;
+      color: #666;
+      font-weight: normal;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Carga automática de renglones en Bitrix</h1>
+
+    <p class="subtitle">
+      Cargue la URL de una negociación de Bitrix y una planilla de cotización.
+      El sistema validará los renglones antes de crear la carpeta, cargar los productos y asociarlos a la negociación.
+    </p>
+
+    {% if error %}
+      <div class="error">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form action="/validar" method="post" enctype="multipart/form-data">
+      <label>URL de negociación Bitrix</label>
+      <input
+        type="text"
+        name="url_negociacion"
+        placeholder="Pegue la URL de una negociación de Bitrix24 aquí"
+        value="{{ url_negociacion or '' }}"
+        required
+      />
+
+      <label>Subir planilla Excel</label>
+      <input
+        type="file"
+        name="archivo_excel"
+        accept=".xlsx,.xlsm,.xls"
+        required
+      />
+
+      <button type="submit">Validar planilla</button>
+    </form>
+
+    {% if deal_id %}
+      <div class="info-box">
+        <strong>Negociación detectada</strong><br>
+        ID: {{ deal_id }}<br>
+        Nombre: {{ titulo_deal }}<br>
+        Carpeta: {{ nombre_carpeta }}
+      </div>
+    {% endif %}
+
+    {% if carga_realizada %}
+      <div class="status">
+        <div class="success-title">
+          La carpeta, los renglones y la asociación con la negociación fueron procesados correctamente.
+        </div>
+        Carpeta: {{ nombre_carpeta }}<br>
+        SECTION_ID: {{ section_id }}<br>
+        Acción sobre carpeta: {{ accion_carpeta }}<br>
+        Productos/renglones creados: {{ productos_creados|length }}<br>
+        Productos/renglones asociados a la negociación: {{ productos_asociados }}
+      </div>
+    {% endif %}
+
+    {% if productos_creados %}
+      <h2>Resumen de productos creados</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID Bitrix</th>
+            <th>Renglón</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Precio</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for producto in productos_creados %}
+            <tr>
+              <td>{{ producto.id }}</td>
+              <td>{{ producto.nombre }}</td>
+              <td>{{ producto.descripcion }}</td>
+              <td>{{ producto.cantidad }}</td>
+              <td>{{ producto.precio }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    {% if errores %}
+      <div class="error">
+        <strong>Errores detectados:</strong>
+        <ul>
+          {% for error in errores %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if advertencias %}
+      <div class="warning">
+        <strong>Advertencias:</strong>
+        <ul>
+          {% for advertencia in advertencias %}
+            <li>{{ advertencia }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if renglones %}
+      {% if es_valido and not carga_realizada %}
+        <div class="status">
+          Planilla validada correctamente. Se detectaron {{ renglones|length }} renglones.
+        </div>
+      {% endif %}
+
+      <h2>Vista previa</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Fila Excel</th>
+            <th>Renglón</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Unitario</th>
+            <th>Total</th>
+            <th>Dotación 4hs</th>
+            <th>Dotación 8hs</th>
+            <th>Supervisores/Encargados</th>
+            <th>Dirección</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for item in renglones %}
+            <tr>
+              <td>{{ item.fila_excel }}</td>
+              <td>{{ item.nombre_producto }}</td>
+              <td>{{ item.descripcion_producto }}</td>
+              <td>{{ item.cantidad }}</td>
+              <td>{{ item.valor_unitario }}</td>
+              <td>{{ item.valor_total }}</td>
+              <td>{{ item.dotacion_4hs }}</td>
+              <td>{{ item.dotacion_8hs }}</td>
+              <td>{{ item.supervisor }}</td>
+              <td>{{ item.domicilio }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if es_valido and not carga_realizada %}
+        <div class="actions">
+          <form action="/cargar" method="post" onsubmit="mostrarCargando()">
+            <input type="hidden" name="url_negociacion" value="{{ url_negociacion }}">
+            <input type="hidden" name="archivo_guardado" value="{{ archivo_guardado }}">
+            <button type="submit" class="secondary" id="btn-cargar">
+              Crear carpeta, cargar renglones y asociar a negociación
+            </button>
+          </form>
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div>Procesando carga en Bitrix...</div>
+    <small>Por favor, no cierre esta ventana.</small>
+  </div>
+
+  <script>
+    function mostrarCargando() {
+      const overlay = document.getElementById("loading-overlay");
+      const boton = document.getElementById("btn-cargar");
+
+      if (overlay) {
+        overlay.style.display = "flex";
+      }
+
+      if (boton) {
+        boton.disabled = true;
+        boton.innerText = "Procesando...";
+      }
+    }
+  </script>
+</body>
+</html>
