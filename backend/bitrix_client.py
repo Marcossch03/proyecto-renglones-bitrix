@@ -76,6 +76,7 @@ def probar_conexion_productos(catalog_id):
 
     return llamar_metodo_bitrix("crm.product.list", parametros)
 
+
 def probar_conexion_secciones(catalog_id):
     """
     Prueba segura de lectura de secciones/carpetas del catálogo.
@@ -97,6 +98,7 @@ def probar_conexion_secciones(catalog_id):
 
     return llamar_metodo_bitrix("crm.productsection.list", parametros)
 
+
 def obtener_deal_por_id(deal_id):
     """
     Consulta una negociación por ID usando crm.deal.get.
@@ -107,6 +109,7 @@ def obtener_deal_por_id(deal_id):
     }
 
     return llamar_metodo_bitrix("crm.deal.get", parametros)
+
 
 def buscar_seccion_por_nombre(catalog_id, nombre_seccion):
     """
@@ -190,6 +193,7 @@ def obtener_o_crear_seccion(catalog_id, nombre_seccion, permitir_escritura=False
         "detalle": resultado_creacion,
     }
 
+
 def crear_producto_en_seccion(catalog_id, section_id, renglon):
     """
     Crea un producto/renglón dentro de una sección del catálogo.
@@ -229,3 +233,71 @@ def crear_producto_en_seccion(catalog_id, section_id, renglon):
     }
 
     return llamar_metodo_bitrix("crm.product.add", parametros)
+
+
+def asociar_productos_a_negociacion(deal_id, productos_para_asociar):
+    """
+    Asocia productos/renglones a una negociación de Bitrix.
+
+    Usa crm.deal.productrows.set.
+
+    Importante:
+    Este método reemplaza los renglones actuales de la negociación
+    por los enviados en ROWS.
+
+    Para el enfoque actual del proyecto, esto es correcto porque
+    se carga toda la planilla de una vez.
+    """
+
+    if not productos_para_asociar:
+        raise BitrixError(
+            "No hay productos para asociar a la negociación."
+        )
+
+    rows = []
+
+    for producto in productos_para_asociar:
+        product_id = producto.get("id")
+        nombre = producto.get("nombre")
+        precio = producto.get("precio", 0)
+        cantidad = producto.get("cantidad", 0)
+
+        if not product_id:
+            raise BitrixError(
+                f"Producto sin ID de Bitrix. No se puede asociar: {producto}"
+            )
+
+        if cantidad <= 0:
+            raise BitrixError(
+                f"Producto con cantidad inválida. No se puede asociar: {producto}"
+            )
+
+        rows.append({
+            "PRODUCT_ID": int(product_id),
+            "PRODUCT_NAME": str(nombre),
+            "PRICE": float(precio),
+            "QUANTITY": float(cantidad),
+        })
+
+    parametros = {
+        "id": int(deal_id),
+        "rows": rows
+    }
+
+    return llamar_metodo_bitrix("crm.deal.productrows.set", parametros)
+
+def limpiar_productos_de_negociacion(deal_id):
+    """
+    Elimina todos los productos/renglones asociados a una negociación.
+
+    No elimina productos del catálogo.
+    No elimina secciones.
+    Solo limpia los renglones asociados al deal.
+    """
+
+    parametros = {
+        "id": int(deal_id),
+        "rows": []
+    }
+
+    return llamar_metodo_bitrix("crm.deal.productrows.set", parametros)
