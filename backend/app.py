@@ -23,8 +23,8 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 
 app = Flask(
     __name__,
-    template_folder=str(BASE_DIR / "frontend" / "templates"),
-    static_folder=str(BASE_DIR / "frontend" / "static"),
+    template_folder="templates"
+    #static_folder=str(BASE_DIR / "frontend" / "static"),
 )
 
 
