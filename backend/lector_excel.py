@@ -202,6 +202,7 @@ def mostrar_vista_previa(renglones):
             f"Fila {item['fila_excel']} | "
             f"Producto: {item['nombre_producto']} | "
             f"Descripción: {item['descripcion_producto']} | "
+            f"Cantidad: {item['cantidad']} | "
             f"Valor unitario: {item['valor_unitario']} | "
             f"Valor total: {item['valor_total']} | "
             f"Dotación 4hs: {item['dotacion_4hs']} | "
