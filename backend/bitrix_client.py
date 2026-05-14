@@ -201,10 +201,16 @@ def crear_producto_en_seccion(catalog_id, section_id, renglon):
     """
 
     descripcion = str(renglon["descripcion_producto"])
+    frecuencia = renglon.get("frecuencia")
     domicilio = str(renglon.get("domicilio", ""))
     dotacion_4hs = renglon.get("dotacion_4hs", 0)
     dotacion_8hs = renglon.get("dotacion_8hs", 0)
     encargados_pliego = renglon.get("supervisor", 0)
+
+    descripcion_detallada = descripcion
+
+    if frecuencia is not None and str(frecuencia).strip() != "":
+        descripcion_detallada = f"{descripcion}\n\nFrecuencia: {frecuencia}"
 
     fields = {
         "CATALOG_ID": catalog_id,
@@ -212,7 +218,7 @@ def crear_producto_en_seccion(catalog_id, section_id, renglon):
 
         # Datos principales del producto
         "NAME": str(renglon["nombre_producto"]),
-        "DESCRIPTION": descripcion,
+        "DESCRIPTION": descripcion_detallada,
         "DESCRIPTION_TYPE": "text",
         "PRICE": renglon["valor_unitario"],
         "CURRENCY_ID": "ARS",
@@ -233,7 +239,6 @@ def crear_producto_en_seccion(catalog_id, section_id, renglon):
     }
 
     return llamar_metodo_bitrix("crm.product.add", parametros)
-
 
 def asociar_productos_a_negociacion(deal_id, productos_para_asociar):
     """
@@ -301,3 +306,4 @@ def limpiar_productos_de_negociacion(deal_id):
     }
 
     return llamar_metodo_bitrix("crm.deal.productrows.set", parametros)
+
