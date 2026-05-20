@@ -46,7 +46,6 @@ if not BITRIX_WEBHOOK_URL and ENV_PATH.exists():
 
 # Configuración de Oauth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 SECRET_KEY = os.getenv("SECRET_KEY", "clave-temporal-cambiar-en-produccion")
 
 DOMINIO_AUTORIZADO = os.getenv("DOMINIO_AUTORIZADO", "").strip().lower()

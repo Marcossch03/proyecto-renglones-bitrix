@@ -3,4 +3,4 @@ openpyxl
 requests
 python-dotenv
 flask
-authlib
+google-auth

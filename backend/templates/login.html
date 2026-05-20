@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="referrer" content="no-referrer-when-downgrade" />
+  <title>Iniciar Sesión - Carga de Renglones Bitrix</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 40px;
+      color: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .login-container {
+      background: white;
+      border-radius: 14px;
+      padding: 40px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #1f3b73;
+      font-size: 24px;
+    }
+
+    p {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .error {
+      margin-bottom: 20px;
+      padding: 12px;
+      background: #ffe2e2;
+      border-left: 5px solid #c53030;
+      border-radius: 6px;
+      color: #742a2a;
+      text-align: left;
+    }
+
+    .google-btn-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <h1>Bienvenido</h1>
+    <p>Inicie sesión con su cuenta de Google autorizada para continuar.</p>
+    
+    {% if error %}
+      <div class="error">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <div class="google-btn-wrapper">
+      <div id="g_id_onload"
+           data-client_id="{{ client_id }}"
+           data-context="signin"
+           data-ux_mode="popup"
+           data-callback="handleCredentialResponse"
+           data-auto_prompt="false">
+      </div>
+
+      <div class="g_id_signin"
+           data-type="standard"
+           data-shape="rectangular"
+           data-theme="outline"
+           data-text="signin_with"
+           data-size="large"
+           data-logo_alignment="left">
+      </div>
+    </div>
+
+    <!-- Formulario oculto para enviar el token JWT al backend -->
+    <form id="google-login-form" action="/auth/callback" method="POST" style="display: none;">
+      <input type="hidden" name="credential" id="credential-input">
+    </form>
+  </div>
+
+  <script>
+    function handleCredentialResponse(response) {
+      if (response.credential) {
+        document.getElementById('credential-input').value = response.credential;
+        document.getElementById('google-login-form').submit();
+      }
+    }
+  </script>
+</body>
+</html>

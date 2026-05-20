@@ -2,13 +2,13 @@ from pathlib import Path
 from functools import wraps
 
 from flask import Flask, render_template, request, redirect, url_for, session
-from authlib.integrations.flask_client import OAuth
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 from config import (
     CATALOG_ID,
     PREFIJO_CARPETA_BITRIX,
     GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
     SECRET_KEY,
     DOMINIO_AUTORIZADO,
     USUARIOS_AUTORIZADOS,
@@ -32,26 +32,12 @@ UPLOADS_DIR = BASE_DIR / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
 
 
-app = Flask(
-    __name__,
-    template_folder=str(BASE_DIR / "frontend" / "templates"),
-    static_folder=str(BASE_DIR / "frontend" / "static"),
-)
+app = Flask(__name__)
 
 app.secret_key = SECRET_KEY
 
 
-oauth = OAuth(app)
 
-google = oauth.register(
-    name="google",
-    client_id=GOOGLE_CLIENT_ID,
-    client_secret=GOOGLE_CLIENT_SECRET,
-    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-    client_kwargs={
-        "scope": "openid email profile"
-    },
-)
 
 
 def construir_nombre_carpeta(deal_id, titulo_deal):
@@ -104,34 +90,54 @@ def login_requerido(func):
 
 @app.route("/login")
 def login():
-    redirect_uri = url_for("auth_callback", _external=True)
-    return google.authorize_redirect(redirect_uri)
+    # Para GIS pasamos el CLIENT_ID al template
+    return render_template("login.html", client_id=GOOGLE_CLIENT_ID)
 
 
-@app.route("/auth/callback")
+@app.route("/auth/callback", methods=["POST"])
 def auth_callback():
-    token = google.authorize_access_token()
-    userinfo = token.get("userinfo")
-
-    if not userinfo:
-        userinfo = google.userinfo()
-
-    email = userinfo.get("email")
-    nombre = userinfo.get("name")
-
-    if not usuario_autorizado(email):
-        session.clear()
+    token = request.form.get("credential")
+    
+    if not token:
         return render_template(
-            "index.html",
-            error=f"Usuario no autorizado: {email}"
+            "login.html",
+            client_id=GOOGLE_CLIENT_ID,
+            error="Falta credencial de Google"
         )
-
-    session["usuario"] = {
-        "email": email,
-        "nombre": nombre,
-    }
-
-    return redirect(url_for("index"))
+        
+    try:
+        # Verificar el token JWT (GIS)
+        idinfo = id_token.verify_oauth2_token(
+            token, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID
+        )
+        
+        email = idinfo.get("email")
+        nombre = idinfo.get("name")
+        
+        if not usuario_autorizado(email):
+            session.clear()
+            return render_template(
+                "login.html",
+                client_id=GOOGLE_CLIENT_ID,
+                error=f"Usuario no autorizado: {email}"
+            )
+            
+        session["usuario"] = {
+            "email": email,
+            "nombre": nombre,
+        }
+        
+        return redirect(url_for("index"))
+        
+    except ValueError:
+        # Token inválido
+        return render_template(
+            "login.html",
+            client_id=GOOGLE_CLIENT_ID,
+            error="El token de Google es inválido"
+        )
 
 
 @app.route("/logout")
