@@ -1,8 +1,19 @@
 from pathlib import Path
+from functools import wraps
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, session
+from authlib.integrations.flask_client import OAuth
 
-from config import CATALOG_ID, PREFIJO_CARPETA_BITRIX
+from config import (
+    CATALOG_ID,
+    PREFIJO_CARPETA_BITRIX,
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    SECRET_KEY,
+    DOMINIO_AUTORIZADO,
+    USUARIOS_AUTORIZADOS,
+)
+
 from deal_utils import extraer_deal_id_desde_url
 from lector_excel import leer_renglones
 from validador import validar_renglones
@@ -23,8 +34,23 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 
 app = Flask(
     __name__,
-    template_folder="templates"
-    #static_folder=str(BASE_DIR / "frontend" / "static"),
+    template_folder=str(BASE_DIR / "frontend" / "templates"),
+    static_folder=str(BASE_DIR / "frontend" / "static"),
+)
+
+app.secret_key = SECRET_KEY
+
+
+oauth = OAuth(app)
+
+google = oauth.register(
+    name="google",
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={
+        "scope": "openid email profile"
+    },
 )
 
 
@@ -45,12 +71,86 @@ def construir_nombre_carpeta(deal_id, titulo_deal):
     return f"{deal_id} - {titulo_deal}"
 
 
+def usuario_autorizado(email):
+    """
+    Valida si el usuario puede acceder a la aplicación.
+    Puede autorizar por lista de emails o por dominio.
+    """
+
+    if not email:
+        return False
+
+    email = email.lower().strip()
+
+    if USUARIOS_AUTORIZADOS:
+        return email in USUARIOS_AUTORIZADOS
+
+    if DOMINIO_AUTORIZADO:
+        return email.endswith(f"@{DOMINIO_AUTORIZADO}")
+
+    return False
+
+
+def login_requerido(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if "usuario" not in session:
+            return redirect(url_for("login"))
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@app.route("/login")
+def login():
+    redirect_uri = url_for("auth_callback", _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route("/auth/callback")
+def auth_callback():
+    token = google.authorize_access_token()
+    userinfo = token.get("userinfo")
+
+    if not userinfo:
+        userinfo = google.userinfo()
+
+    email = userinfo.get("email")
+    nombre = userinfo.get("name")
+
+    if not usuario_autorizado(email):
+        session.clear()
+        return render_template(
+            "index.html",
+            error=f"Usuario no autorizado: {email}"
+        )
+
+    session["usuario"] = {
+        "email": email,
+        "nombre": nombre,
+    }
+
+    return redirect(url_for("index"))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/", methods=["GET"])
+@login_requerido
 def index():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        usuario=session.get("usuario")
+    )
 
 
 @app.route("/validar", methods=["POST"])
+@login_requerido
 def validar():
     url_negociacion = request.form.get("url_negociacion")
     archivo_excel = request.files.get("archivo_excel")
@@ -58,13 +158,15 @@ def validar():
     if not url_negociacion:
         return render_template(
             "index.html",
-            error="Debe ingresar la URL de la negociación de Bitrix."
+            error="Debe ingresar la URL de la negociación de Bitrix.",
+            usuario=session.get("usuario"),
         )
 
     if not archivo_excel:
         return render_template(
             "index.html",
-            error="Debe subir una planilla Excel."
+            error="Debe subir una planilla Excel.",
+            usuario=session.get("usuario"),
         )
 
     try:
@@ -77,7 +179,8 @@ def validar():
         if not titulo_deal:
             return render_template(
                 "index.html",
-                error="No se pudo obtener el nombre real de la negociación."
+                error="No se pudo obtener el nombre real de la negociación.",
+                usuario=session.get("usuario"),
             )
 
         ruta_archivo = UPLOADS_DIR / archivo_excel.filename
@@ -100,6 +203,7 @@ def validar():
             errores=errores,
             advertencias=advertencias,
             archivo_guardado=str(ruta_archivo),
+            usuario=session.get("usuario"),
         )
 
     except ValueError as error:
@@ -107,6 +211,7 @@ def validar():
             "index.html",
             error=str(error),
             url_negociacion=url_negociacion,
+            usuario=session.get("usuario"),
         )
 
     except BitrixError as error:
@@ -114,6 +219,7 @@ def validar():
             "index.html",
             error=f"Error Bitrix: {error}",
             url_negociacion=url_negociacion,
+            usuario=session.get("usuario"),
         )
 
     except Exception as error:
@@ -121,10 +227,12 @@ def validar():
             "index.html",
             error=f"Error inesperado: {error}",
             url_negociacion=url_negociacion,
+            usuario=session.get("usuario"),
         )
 
 
 @app.route("/cargar", methods=["POST"])
+@login_requerido
 def cargar():
     url_negociacion = request.form.get("url_negociacion")
     archivo_guardado = request.form.get("archivo_guardado")
@@ -132,13 +240,15 @@ def cargar():
     if not url_negociacion:
         return render_template(
             "index.html",
-            error="No se recibió la URL de la negociación."
+            error="No se recibió la URL de la negociación.",
+            usuario=session.get("usuario"),
         )
 
     if not archivo_guardado:
         return render_template(
             "index.html",
-            error="No se recibió la planilla validada."
+            error="No se recibió la planilla validada.",
+            usuario=session.get("usuario"),
         )
 
     try:
@@ -151,7 +261,8 @@ def cargar():
         if not titulo_deal:
             return render_template(
                 "index.html",
-                error="No se pudo obtener el nombre real de la negociación."
+                error="No se pudo obtener el nombre real de la negociación.",
+                usuario=session.get("usuario"),
             )
 
         ruta_archivo = Path(archivo_guardado)
@@ -171,6 +282,7 @@ def cargar():
                 es_valido=es_valido,
                 errores=errores,
                 advertencias=advertencias,
+                usuario=session.get("usuario"),
             )
 
         nombre_carpeta = construir_nombre_carpeta(deal_id, titulo_deal)
@@ -223,6 +335,7 @@ def cargar():
             productos_creados=productos_creados,
             productos_asociados=productos_asociados,
             resultado_asociacion=resultado_asociacion,
+            usuario=session.get("usuario"),
         )
 
     except BitrixError as error:
@@ -230,6 +343,7 @@ def cargar():
             "index.html",
             error=f"Error Bitrix durante la carga: {error}",
             url_negociacion=url_negociacion,
+            usuario=session.get("usuario"),
         )
 
     except Exception as error:
@@ -237,8 +351,9 @@ def cargar():
             "index.html",
             error=f"Error inesperado durante la carga: {error}",
             url_negociacion=url_negociacion,
+            usuario=session.get("usuario"),
         )
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
