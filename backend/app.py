@@ -60,7 +60,7 @@ def construir_nombre_carpeta(deal_id, titulo_deal):
 def usuario_autorizado(email):
     """
     Valida si el usuario puede acceder a la aplicación.
-    Puede autorizar por lista de emails o por dominio.
+    Si no hay lista blanca ni dominio específico, se aprueba a todos.
     """
 
     if not email:
@@ -74,7 +74,7 @@ def usuario_autorizado(email):
     if DOMINIO_AUTORIZADO:
         return email.endswith(f"@{DOMINIO_AUTORIZADO}")
 
-    return False
+    return True
 
 
 def login_requerido(func):
