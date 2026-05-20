@@ -43,3 +43,16 @@ if not BITRIX_WEBHOOK_URL and ENV_PATH.exists():
         if linea.startswith("BITRIX_WEBHOOK_URL="):
             BITRIX_WEBHOOK_URL = linea.split("=", 1)[1].strip()
             break
+
+# Configuración de Oauth
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+SECRET_KEY = os.getenv("SECRET_KEY", "clave-temporal-cambiar-en-produccion")
+
+DOMINIO_AUTORIZADO = os.getenv("DOMINIO_AUTORIZADO", "").strip().lower()
+
+USUARIOS_AUTORIZADOS = [
+    email.strip().lower()
+    for email in os.getenv("USUARIOS_AUTORIZADOS", "").split(",")
+    if email.strip()
+]
